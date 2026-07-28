@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stegofox"
+version = "0.1.0"
+description = "High-performance encrypted steganography CLI — hide encrypted payloads in PNG images via LSB embedding."
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+dependencies = [
+    "pillow>=10.0.0",
+    "numpy>=1.24.0",
+    "pycryptodome>=3.19.0",
+]
+
+[project.scripts]
+stegofox = "stegofox.stegofox:main"
+
+[project.urls]
+"Source" = "https://github.com/foxhackerzdevs/stegofox"
+
+[tool.setuptools]
+packages = ["stegofox"]
+package-dir = { "" = "src" }

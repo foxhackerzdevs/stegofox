@@ -43,6 +43,14 @@ def decrypt_payload(payload: bytes, password: str) -> Optional[bytes]:
     except Exception:
         return None
 
+def get_capacity(image_path: str) -> int:
+    """Return approximate capacity in bytes."""
+    try:
+        img = Image.open(image_path).convert("RGB")
+        return np.array(img).size // 8
+    except Exception:
+        return 0
+
 def embed_lsb(image_path: str, data: bytes, output_path: str, password: Optional[str] = None):
     print(f"📸 Loading cover image: {image_path}")
     try:
@@ -50,6 +58,9 @@ def embed_lsb(image_path: str, data: bytes, output_path: str, password: Optional
     except Exception as e:
         print(f"❌ Failed to read image: {e}")
         return
+
+    capacity = get_capacity(image_path)
+    print(f"📏 Image capacity: ~{capacity:,} bytes")
 
     if password:
         print("🔐 Encrypting payload...")

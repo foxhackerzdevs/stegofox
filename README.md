@@ -9,10 +9,17 @@ Hide any file inside a PNG image using LSB (least-significant-bit) embedding, op
 - Optional AES-256-GCM encryption (PBKDF2-HMAC-SHA256, 100k iterations) before embedding
 - Lossless PNG output — the embedding survives save/reload exactly
 - Wrong-password and corrupted-payload detection fail cleanly (no crash, no garbage output)
-- Capacity checking — refuses to embed data too large for the cover image, before touching anything
+- Capacity checking — refuses to embed data too large for the cover image, before touching anything, and prints an estimated capacity upfront
 
 ## Install
 ```bash
+pip install stegofox
+```
+
+Or from source:
+```bash
+git clone https://github.com/foxhackerzdevs/stegofox.git
+cd stegofox
 pip install -e .
 ```
 
@@ -30,6 +37,7 @@ stegofox embed cover.png secret.txt -o output.png --password hunter2
 🦊 StegoFox Pro
 
 📸 Loading cover image: cover.png
+📏 Image capacity: ~2,400 bytes
 🔐 Encrypting payload...
 🧬 Embedding 712 bits...
 ✅ Successfully embedded! Saved to output.png

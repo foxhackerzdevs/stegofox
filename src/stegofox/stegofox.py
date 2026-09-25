@@ -7,6 +7,7 @@ import sys
 import hashlib
 import struct
 import argparse
+import getpass
 from pathlib import Path
 from typing import Optional
 import numpy as np
@@ -20,6 +21,33 @@ except ImportError:
     sys.exit(1)
 
 STEGO_SIGNATURE = b"SFOX"
+VERSION = "0.2.0"  # keep in sync with pyproject.toml's [project].version
+
+# Sentinel for "--password given with no value" -> prompt via getpass, as
+# distinct from "--password not given at all" (no encryption) and
+# "--password <value>" (use directly, but warn -- visible in shell
+# history and `ps`).
+_PROMPT = object()
+
+
+def resolve_password(password_arg):
+    """
+    Resolve the --password argument to an actual password or None.
+      * not given at all           -> None (no encryption/decryption)
+      * given with no value (-p)   -> prompt via getpass (safest)
+      * given with a value (-p X)  -> use X directly, but warn
+    """
+    if password_arg is _PROMPT:
+        return getpass.getpass("Password: ")
+    if password_arg is not None:
+        print(
+            "⚠️  Warning: passwords passed via --password/-p are visible in shell "
+            "history and to other local users via `ps`. Use -p with no value to "
+            "be prompted instead.",
+            file=sys.stderr,
+        )
+        return password_arg
+    return None
 
 def derive_key(password: str, salt: bytes) -> bytes:
     return hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100_000, dklen=32)
@@ -128,34 +156,43 @@ def extract_lsb(image_path: str, password: Optional[str] = None) -> Optional[byt
         return None
 
 def main():
-    print("🦊 StegoFox Pro\n")
-
     parser = argparse.ArgumentParser(description="High-performance encrypted steganography CLI")
+    parser.add_argument("--version", action="version", version=f"stegofox {VERSION}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     embed_parser = subparsers.add_parser("embed", help="Embed secret into image")
     embed_parser.add_argument("image", type=str, help="Cover image path")
     embed_parser.add_argument("secret", type=str, help="Secret file to hide")
     embed_parser.add_argument("--output", "-o", type=str, default="stegofox_output.png", help="Output image path")
-    embed_parser.add_argument("--password", "-p", type=str, default=None, help="Encryption password")
+    embed_parser.add_argument("--password", "-p", type=str, nargs="?", const=_PROMPT, default=None,
+                               help="Encrypt with a password. Use -p with no value to be prompted "
+                                    "(recommended) -- passing the password directly leaks it into "
+                                    "shell history and `ps`. Omit entirely for no encryption.")
 
     extract_parser = subparsers.add_parser("extract", help="Extract hidden data")
     extract_parser.add_argument("image", type=str, help="Stego image path")
-    extract_parser.add_argument("--password", "-p", type=str, default=None, help="Decryption password")
+    extract_parser.add_argument("--password", "-p", type=str, nargs="?", const=_PROMPT, default=None,
+                                 help="Decrypt with a password. Use -p with no value to be prompted "
+                                      "(recommended) -- passing the password directly leaks it into "
+                                      "shell history and `ps`.")
 
     args = parser.parse_args()
 
+    print("🦊 StegoFox Pro\n")
+
     if args.command == "embed":
+        password = resolve_password(args.password)
         try:
             with open(args.secret, "rb") as f:
                 data = f.read()
-            embed_lsb(args.image, data, args.output, args.password)
+            embed_lsb(args.image, data, args.output, password)
         except Exception as e:
             print(f"Error during embedding: {e}")
 
     elif args.command == "extract":
+        password = resolve_password(args.password)
         try:
-            data = extract_lsb(args.image, args.password)
+            data = extract_lsb(args.image, password)
             if data is not None:
                 print(f"✅ Extracted {len(data)} bytes")
                 try:

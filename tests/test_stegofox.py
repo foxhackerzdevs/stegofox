@@ -10,6 +10,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 from PIL import Image
@@ -18,6 +19,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 from stegofox.stegofox import (
     derive_key, encrypt_payload, decrypt_payload, embed_lsb, extract_lsb,
+    resolve_password, _PROMPT,
 )
 
 
@@ -49,7 +51,25 @@ class TestCryptoRoundTrip(unittest.TestCase):
         self.assertNotEqual(derive_key("pw", b"0" * 16), derive_key("pw", b"1" * 16))
 
 
+class TestResolvePassword(unittest.TestCase):
+    def test_no_password_arg_returns_none(self):
+        # --password not given at all -> no encryption
+        self.assertIsNone(resolve_password(None))
+
+    def test_password_value_returned_directly(self):
+        # -p <value> -> used as-is (with a stderr warning, not asserted here)
+        self.assertEqual(resolve_password("hunter2"), "hunter2")
+
+    @patch("stegofox.stegofox.getpass.getpass", return_value="prompted-pw")
+    def test_prompt_sentinel_triggers_getpass(self, mock_getpass):
+        # -p with no value -> prompt via getpass, argv never sees the password
+        result = resolve_password(_PROMPT)
+        self.assertEqual(result, "prompted-pw")
+        mock_getpass.assert_called_once()
+
+
 class TestLSBRoundTrip(unittest.TestCase):
+
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
         self.cover = os.path.join(self.tmpdir, "cover.png")
